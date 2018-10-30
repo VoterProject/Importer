@@ -3,7 +3,6 @@ package pa_parser
 import (
 	"bufio"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/voterproject/importer/pkg/sql"
 	"os"
 	"path/filepath"
@@ -12,12 +11,13 @@ import (
 )
 
 type pa_parser struct {
-	db *sql.VoterDB
+	db     *sql.VoterDB
+	Tables bool
 }
 
 func ParseDirectory(path string, db *sql.VoterDB) {
 
-	pa := pa_parser{db}
+	pa := pa_parser{db: db}
 
 	fmt.Println(path)
 
@@ -108,11 +108,16 @@ func (pa *pa_parser) parseLine(line string) *Record {
 		parseString(fields[152]),
 	}
 
-	if record.FirstName != nil && record.LastName != nil && *(record.FirstName) == "AMIR" && *(record.LastName) == "OMIDI" {
-		spew.Println(record)
-		pa.db.DB.AutoMigrate(&record)
-		pa.db.DB.Create(&record)
+	if !pa.Tables {
+		if !pa.db.DB.HasTable(&record) {
+			pa.db.DB.CreateTable(&record)
+			pa.db.DB.CreateTable(&districts)
+			pa.db.DB.CreateTable(&elections)
+		}
+		pa.Tables = true
 	}
+
+	pa.db.DB.Save(&record)
 	return &record
 }
 
