@@ -13,8 +13,8 @@ import (
 )
 
 type pa_parser struct {
-	db     *sql.VoterDB
-	Tables bool
+	db       *sql.VoterDB
+	FirstRun bool
 }
 
 func ParseDirectory(path string, db *sql.VoterDB) {
@@ -29,6 +29,7 @@ func ParseDirectory(path string, db *sql.VoterDB) {
 		pa.parseFile(path)
 		return nil
 	})
+
 }
 
 func (pa *pa_parser) parseFile(path string) {
@@ -71,12 +72,11 @@ func (pa *pa_parser) parseFile(path string) {
 	})
 	fmt.Println("Done putting them into a list")
 
-	if !pa.Tables {
+	if !pa.FirstRun {
 		pa.db.DB.CreateTable(&(records[0]))
 		pa.db.DB.CreateTable(&(elections[0]))
 		pa.db.DB.CreateTable(&(districts[0]))
 
-		pa.Tables = true
 	}
 
 	f1, err := os.OpenFile("./pa_records.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
@@ -87,10 +87,11 @@ func (pa *pa_parser) parseFile(path string) {
 	defer f2.Close()
 	defer f3.Close()
 
-	if !pa.Tables {
+	if !pa.FirstRun {
 		err = gocsv.MarshalFile(&(records), f1)
 		err = gocsv.MarshalFile(&(elections), f2)
 		err = gocsv.MarshalFile(&(districts), f3)
+		pa.FirstRun = true
 	} else {
 		err = gocsv.MarshalWithoutHeaders(&(records), f1)
 		err = gocsv.MarshalWithoutHeaders(&(elections), f2)
