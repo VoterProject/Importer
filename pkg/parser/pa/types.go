@@ -2,8 +2,14 @@ package pa_parser
 
 import "time"
 
+type Results struct {
+	Record   *Record
+	Election []Election
+	District []District
+}
+
 type Record struct {
-	ID                *string `gorm:"PRIMARY_KEY"`
+	ID                string
 	Title             *string
 	LastName          *string
 	FirstName         *string
@@ -33,14 +39,13 @@ type Record struct {
 	PrecinctSplitID   *string
 	DateLastChanged   *time.Time
 	CustomData1       *string
-	Districts         []District `gorm:"foreignkey:ID;association_foreignkey:ID"`
-	Elections         []Election `gorm:"foreignkey:ID;association_foreignkey:ID"`
 	HomePhone         *string
 	County            *string
 	MailCountry       *string
 }
 
 type Election struct {
+	RecordID   string
 	ID         *string
 	Number     int
 	VoteMethod *string
@@ -48,6 +53,7 @@ type Election struct {
 }
 
 type District struct {
+	RecordID string
 	ID       *string
 	Number   int
 	District *string

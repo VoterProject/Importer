@@ -3,6 +3,7 @@ package pa_parser
 import (
 	"bufio"
 	"fmt"
+	"github.com/gocarina/gocsv"
 	"github.com/voterproject/importer/pkg/sql"
 	"os"
 	"path/filepath"
@@ -40,21 +41,44 @@ func (pa *pa_parser) parseFile(path string) {
 	}
 	scanner := bufio.NewScanner(file)
 
+	var records []Record
+	var elections []Election
+	var districts []District
 	for scanner.Scan() {
-		pa.parseLine(scanner.Text())
+		x := pa.parseLine(scanner.Text())
+		records = append(records, *x.Record)
+		elections = append(elections, x.Election...)
+		districts = append(districts, x.District...)
 		//return
 	}
 
+	pa.db.DB.CreateTable(&(records[0]))
+	pa.db.DB.CreateTable(&(elections[0]))
+	pa.db.DB.CreateTable(&(districts[0]))
+
+	f1, err := os.Create("./pa_records.csv")
+	f2, err := os.Create("./pa_elections.csv")
+	f3, err := os.Create("./pa_districts.csv")
+	err = gocsv.MarshalFile(&records, f1)
+	err = gocsv.MarshalFile(&elections, f2)
+	err = gocsv.MarshalFile(&districts, f3)
+
 }
 
-func (pa *pa_parser) parseLine(line string) *Record {
+func (pa *pa_parser) parseLine(line string) *Results {
 	fields := strings.Split(line, "\t")
+	ID := parseString(fields[0])
 
-	// Districts are fields 30-70
+	if ID == nil {
+		panic("Nil ID")
+	}
+
+	//Districts are fields 30-70
 	districts := make([]District, 40)
 	for i := 30; i < 70; i++ {
 		j := i - 30
 		districts[j] = District{
+			RecordID: *ID,
 			Number:   j + 1,
 			District: parseString(fields[i])}
 	}
@@ -64,6 +88,7 @@ func (pa *pa_parser) parseLine(line string) *Record {
 	for i := 70; i < 150; i = i + 2 {
 		j := (i - 70) / 2
 		election := Election{
+			RecordID:   *ID,
 			Number:     j + 1,
 			VoteMethod: parseString(fields[i]),
 			Party:      parseString(fields[i+1]),
@@ -71,7 +96,7 @@ func (pa *pa_parser) parseLine(line string) *Record {
 		elections[(i-70)/2] = election
 	}
 	record := Record{
-		parseString(fields[0]),
+		*ID,
 		parseString(fields[1]),
 		parseString(fields[2]),
 		parseString(fields[3]),
@@ -101,24 +126,19 @@ func (pa *pa_parser) parseLine(line string) *Record {
 		parseString(fields[27]),
 		parseTime(fields[28]),
 		parseString(fields[29]),
-		districts,
-		elections,
 		parseString(fields[150]),
 		parseString(fields[151]),
 		parseString(fields[152]),
 	}
-
-	if !pa.Tables {
-		if !pa.db.DB.HasTable(&record) {
-			pa.db.DB.CreateTable(&record)
-			pa.db.DB.CreateTable(&districts)
-			pa.db.DB.CreateTable(&elections)
-		}
-		pa.Tables = true
+	return &Results{
+		&record,
+		elections,
+		districts,
 	}
+}
 
-	pa.db.DB.Save(&record)
-	return &record
+func (pa *pa_parser) ToCSV(records []Record) {
+
 }
 
 func parseTime(field string) *time.Time {
