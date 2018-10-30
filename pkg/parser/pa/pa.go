@@ -3,10 +3,12 @@ package pa_parser
 import (
 	"bufio"
 	"fmt"
+	"github.com/Jeffail/tunny"
 	"github.com/gocarina/gocsv"
 	"github.com/voterproject/importer/pkg/sql"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -14,25 +16,45 @@ import (
 
 type pa_parser struct {
 	db       *sql.VoterDB
+	lock     *sync.Mutex
 	FirstRun bool
 }
 
 func ParseDirectory(path string, db *sql.VoterDB) {
-	pa := pa_parser{db: db}
+	pa := pa_parser{db: db, lock: &sync.Mutex{}, FirstRun: true}
 
 	fmt.Println(path)
+	var wg sync.WaitGroup
+
+	pool := tunny.NewFunc(6, func(i interface{}) interface{} {
+		pa.parseFile(i.(string), &wg)
+		debug.FreeOSMemory()
+		return nil
+	})
 
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if !strings.Contains(path, "FVE") {
 			return nil
 		}
-		pa.parseFile(path)
+		wg.Add(1)
+
+		if pa.FirstRun {
+			pa.parseFile(path, &wg)
+		} else {
+			go pool.Process(path)
+		}
+
 		return nil
 	})
 
+	wg.Wait()
+	fmt.Println("Done")
+
 }
 
-func (pa *pa_parser) parseFile(path string) {
+func (pa *pa_parser) parseFile(path string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	fmt.Printf("Parsing: %s\n", path)
 
 	file, err := os.Open(path)
@@ -41,22 +63,18 @@ func (pa *pa_parser) parseFile(path string) {
 	}
 	scanner := bufio.NewScanner(file)
 
-	var wg sync.WaitGroup
 	var store sync.Map
 
 	i := 0
 	for scanner.Scan() {
-		wg.Add(1)
-		go pa.parseLine(scanner.Text(), i, &wg, &store)
+		pa.parseLine(scanner.Text(), i, &store)
 		i++
 	}
-
-	wg.Wait()
 
 	// Close file, don't wait too long.
 	file.Close()
 
-	fmt.Println("Done parsing")
+	fmt.Printf("\tDone parsing: %s\n", path)
 
 	var records []Record
 	var elections []Election
@@ -70,14 +88,16 @@ func (pa *pa_parser) parseFile(path string) {
 		store.Delete(key)
 		return true
 	})
-	fmt.Println("Done putting them into a list")
+	fmt.Printf("\tDone listing: %s\n", path)
 
-	if !pa.FirstRun {
+	if pa.FirstRun {
 		pa.db.DB.CreateTable(&(records[0]))
 		pa.db.DB.CreateTable(&(elections[0]))
 		pa.db.DB.CreateTable(&(districts[0]))
-
 	}
+
+	pa.lock.Lock()
+	defer pa.lock.Unlock()
 
 	f1, err := os.OpenFile("./pa_records.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
 	f2, err := os.OpenFile("./pa_elections.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
@@ -87,11 +107,11 @@ func (pa *pa_parser) parseFile(path string) {
 	defer f2.Close()
 	defer f3.Close()
 
-	if !pa.FirstRun {
+	if pa.FirstRun {
 		err = gocsv.MarshalFile(&(records), f1)
 		err = gocsv.MarshalFile(&(elections), f2)
 		err = gocsv.MarshalFile(&(districts), f3)
-		pa.FirstRun = true
+		pa.FirstRun = false
 	} else {
 		err = gocsv.MarshalWithoutHeaders(&(records), f1)
 		err = gocsv.MarshalWithoutHeaders(&(elections), f2)
@@ -102,10 +122,14 @@ func (pa *pa_parser) parseFile(path string) {
 	elections = nil
 	districts = nil
 
-	fmt.Println("Done putting them into a CSV")
+	fmt.Printf("\tDone CSV: %s\n", path)
+
+	if pa.FirstRun {
+		pa.FirstRun = false
+	}
 }
 
-func (pa *pa_parser) parseLine(line string, i int, wg *sync.WaitGroup, store *sync.Map) {
+func (pa *pa_parser) parseLine(line string, i int, store *sync.Map) {
 	fields := strings.Split(line, "\t")
 	ID := parseString(fields[0])
 
@@ -184,12 +208,7 @@ func (pa *pa_parser) parseLine(line string, i int, wg *sync.WaitGroup, store *sy
 		parseString(fields[152]),
 	}
 
-	//pa.m.Lock()
 	store.Store(i, &Results{&record, elections, districts})
-
-	//pa.m.Unlock()
-
-	wg.Done()
 }
 
 func (pa *pa_parser) ToCSV(records []Record) {
