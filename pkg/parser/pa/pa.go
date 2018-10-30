@@ -99,9 +99,16 @@ func (pa *pa_parser) parseFile(path string, wg *sync.WaitGroup) {
 	pa.lock.Lock()
 	defer pa.lock.Unlock()
 
-	f1, err := os.OpenFile("./pa_records.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
-	f2, err := os.OpenFile("./pa_elections.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
-	f3, err := os.OpenFile("./pa_districts.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
+	var f1, f2, f3 *os.File
+	if pa.FirstRun {
+		f1, err = os.OpenFile("./pa_records.csv", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0777)
+		f2, err = os.OpenFile("./pa_elections.csv", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0777)
+		f3, err = os.OpenFile("./pa_districts.csv", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0777)
+	} else {
+		f1, err = os.OpenFile("./pa_records.csv", os.O_APPEND|os.O_RDWR, 0777)
+		f2, err = os.OpenFile("./pa_elections.csv", os.O_APPEND|os.O_RDWR, 0777)
+		f3, err = os.OpenFile("./pa_districts.csv", os.O_APPEND|os.O_RDWR, 0777)
+	}
 
 	defer f1.Close()
 	defer f2.Close()

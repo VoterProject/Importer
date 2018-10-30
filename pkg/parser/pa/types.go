@@ -46,7 +46,6 @@ type Record struct {
 
 type Election struct {
 	RecordID   string
-	ID         *string
 	Number     int
 	VoteMethod *string
 	Party      *string
@@ -54,7 +53,6 @@ type Election struct {
 
 type District struct {
 	RecordID string
-	ID       *string
 	Number   int
 	District *string
 }
