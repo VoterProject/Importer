@@ -33,7 +33,7 @@ type Record struct {
 	PrecinctSplitID   *string
 	DateLastChanged   *time.Time
 	CustomData1       *string
-	Districts         map[int]string
+	Districts         map[int]*string
 	Elections         map[int]Election
 	HomePhone         *string
 	County            *string

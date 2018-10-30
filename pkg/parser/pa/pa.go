@@ -55,7 +55,7 @@ func parseLine(line string) *Record {
 			parseString(fields[i]),
 			parseString(fields[i+1]),
 		}
-		elections[i-70] = election
+		elections[(i-70)/2] = election
 	}
 	record := Record{
 		parseString(fields[0]),
