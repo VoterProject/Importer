@@ -16,6 +16,7 @@ type pa_parser struct {
 }
 
 func ParseDirectory(path string, db *sql.VoterDB) {
+	db.DB.AutoMigrate(&Record{}, &District{}, &Election{})
 
 	pa := pa_parser{db: db}
 
@@ -42,7 +43,25 @@ func (pa *pa_parser) parseFile(path string) {
 
 	for scanner.Scan() {
 		pa.parseLine(scanner.Text())
-		//return
+
+		/*
+			recordQueue := make([]*Record, 0)
+			record := pa.parseLine(scanner.Text())
+			if record != nil {
+				recordQueue = append(recordQueue, record)
+				if len(recordQueue) == 100 {
+					fmt.Println("Start")
+					tx := pa.db.DB.Begin()
+					for _, v := range recordQueue {
+						tx.Create(v)
+					}
+					tx.Commit()
+					recordQueue = make([]*Record, 0)
+					fmt.Println("Commit 100")
+					return
+				}
+			}
+		*/
 	}
 
 }
@@ -70,54 +89,67 @@ func (pa *pa_parser) parseLine(line string) *Record {
 		}
 		elections[(i-70)/2] = election
 	}
+
+	id := parseString(fields[0])
+	if id == nil {
+		return nil
+	}
+
 	record := Record{
-		parseString(fields[0]),
-		parseString(fields[1]),
-		parseString(fields[2]),
-		parseString(fields[3]),
-		parseString(fields[4]),
-		parseString(fields[5]),
-		parseString(fields[6]),
-		parseTime(fields[7]),
-		parseTime(fields[8]),
-		parseString(fields[9]),
-		parseTime(fields[10]),
-		parseString(fields[11]),
-		parseString(fields[12]),
-		parseString(fields[13]),
-		parseString(fields[14]),
-		parseString(fields[15]),
-		parseString(fields[16]),
-		parseString(fields[17]),
-		parseString(fields[18]),
-		parseString(fields[19]),
-		parseString(fields[20]),
-		parseString(fields[21]),
-		parseString(fields[22]),
-		parseString(fields[23]),
-		parseString(fields[24]),
-		parseTime(fields[25]),
-		parseString(fields[26]),
-		parseString(fields[27]),
-		parseTime(fields[28]),
-		parseString(fields[29]),
-		districts,
-		elections,
-		parseString(fields[150]),
-		parseString(fields[151]),
-		parseString(fields[152]),
+		ID:                *id,
+		Title:             parseString(fields[1]),
+		LastName:          parseString(fields[2]),
+		FirstName:         parseString(fields[3]),
+		MiddleName:        parseString(fields[4]),
+		Suffix:            parseString(fields[5]),
+		Gender:            parseString(fields[6]),
+		DOB:               parseTime(fields[7]),
+		RegistrationDate:  parseTime(fields[8]),
+		VoterStatus:       parseString(fields[9]),
+		StatusChangeDate:  parseTime(fields[10]),
+		PartyCode:         parseString(fields[11]),
+		HouseNumber:       parseString(fields[12]),
+		HouseNumberSuffix: parseString(fields[13]),
+		StreetName:        parseString(fields[14]),
+		ApartmentNumber:   parseString(fields[15]),
+		AddressLine2:      parseString(fields[16]),
+		City:              parseString(fields[17]),
+		State:             parseString(fields[18]),
+		Zip:               parseString(fields[19]),
+		MailAddress1:      parseString(fields[20]),
+		MailAddress2:      parseString(fields[21]),
+		MailCity:          parseString(fields[22]),
+		MailState:         parseString(fields[23]),
+		MailZip:           parseString(fields[24]),
+		LastVoteDate:      parseTime(fields[25]),
+		PrecinctCode:      parseString(fields[26]),
+		PrecinctSplitID:   parseString(fields[27]),
+		DateLastChanged:   parseTime(fields[28]),
+		CustomData1:       parseString(fields[29]),
+		HomePhone:         parseString(fields[150]),
+		County:            parseString(fields[151]),
+		MailCountry:       parseString(fields[152]),
 	}
 
-	if !pa.Tables {
-		if !pa.db.DB.HasTable(&record) {
-			pa.db.DB.CreateTable(&record)
-			pa.db.DB.CreateTable(&districts)
-			pa.db.DB.CreateTable(&elections)
+	pa.db.DB.Create(&record)
+
+	tx := pa.db.DB.Begin()
+	for _, v := range elections {
+		if v.Party == nil {
+			continue
 		}
-		pa.Tables = true
+		v.RecordID = record.ID
+		tx.Create(&v)
 	}
+	for _, v := range districts {
+		if v.District == nil {
+			continue
+		}
+		v.RecordID = record.ID
+		tx.Create(&v)
+	}
+	tx.Commit()
 
-	pa.db.DB.Save(&record)
 	return &record
 }
 

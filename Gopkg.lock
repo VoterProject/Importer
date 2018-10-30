@@ -10,7 +10,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:6895fbe5a10c5aebd1965cac6f6905dcdb21bee01e08912d3ba6a805c2485f6a"
+  digest = "1:528c29983014997c16c76382d87e2518581787ee2d461edb61a80320714c160d"
   name = "github.com/jinzhu/gorm"
   packages = [
     ".",
@@ -29,7 +29,7 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
-  digest = "1:b18ffc558326ebaed3b4a175617f1e12ed4e3f53d6ebfe5ba372a3de16d22278"
+  digest = "1:5b4bfb4756351d0a9078a771a85e892c34ce33840b56eb7a317cb508adddab7c"
   name = "github.com/lib/pq"
   packages = [
     ".",
