@@ -3,6 +3,7 @@ package pa_parser
 import (
 	"bufio"
 	"fmt"
+	"github.com/lib/pq"
 	"github.com/voterproject/importer/pkg/sql"
 	"os"
 	"path/filepath"
@@ -38,13 +39,22 @@ func (pa *pa_parser) parseFile(path string) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	var records []Record
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		pa.parseLine(scanner.Text())
-		//return
+		x := pa.parseLine(scanner.Text())
+		records = append(records, *x)
 	}
 
+	tx, err := pa.db.DB.Begin()
+
+	stmt, err := tx.Prepare(pq.CopyIn("records", "ID", "Title", "LastName", "FirstName", "MiddleName", "Suffix", "Gender", "DOB", "RegistrationDate", "VoterStatus", "StatusChangeDate", "PartyCode", "HouseNumber", "HouseNumberSuffix", "StreetName", "ApartmentNumber", "AddressLine2", "City", "State", "Zip", "MailAddress1", "MailAddress2", "MailCity", "MailState", "MailZip", "LastVoteDate", "PrecinctCode", "PrecinctSplitID", "DateLastChanged", "CustomData1"))
+	for _, r := range records {
+		res, _ := stmt.Exec(r.ID, r.Title, r.LastName, r.FirstName, r.MiddleName, r.Suffix, r.Gender, r.DOB, r.RegistrationDate, r.VoterStatus, r.StatusChangeDate, r.PartyCode, r.HouseNumber, r.HouseNumberSuffix, r.StreetName, r.ApartmentNumber, r.AddressLine2, r.City, r.StreetName, r.Zip, r.MailAddress1, r.MailAddress2, r.LastVoteDate, r.PrecinctCode, r.PrecinctSplitID, r.DateLastChanged, r.CustomData1)
+		fmt.Println(res)
+	}
 }
 
 func (pa *pa_parser) parseLine(line string) *Record {
@@ -108,16 +118,15 @@ func (pa *pa_parser) parseLine(line string) *Record {
 		parseString(fields[152]),
 	}
 
-	if !pa.Tables {
-		if !pa.db.DB.HasTable(&record) {
-			pa.db.DB.CreateTable(&record)
-			pa.db.DB.CreateTable(&districts)
-			pa.db.DB.CreateTable(&elections)
-		}
-		pa.Tables = true
-	}
+	//if !pa.Tables {
+	//	if !pa.db.DB.HasTable(&record) {
+	//		pa.db.DB.CreateTable(&record)
+	//		pa.db.DB.CreateTable(&districts)
+	//		pa.db.DB.CreateTable(&elections)
+	//	}
+	//	pa.Tables = true
+	//}
 
-	pa.db.DB.Save(&record)
 	return &record
 }
 
