@@ -16,5 +16,6 @@ func NewSQL(connectionString string) *VoterDB {
 		log.Fatal(err)
 	}
 	//db.LogMode(true)
+	db.DB().SetMaxIdleConns(10)
 	return &VoterDB{DB: db}
 }

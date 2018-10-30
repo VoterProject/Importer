@@ -2,15 +2,15 @@
 
 
 [[projects]]
-  digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
-  name = "github.com/davecgh/go-spew"
-  packages = ["spew"]
+  digest = "1:7248f832d2ec4b41627eb8bd55645bc42048a392ddeb647fd0abb2b69f1ded1a"
+  name = "github.com/Jeffail/tunny"
+  packages = ["."]
   pruneopts = "UT"
-  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
-  version = "v1.1.1"
+  revision = "59cfa8fcb19f5acba8db07a0dd3cb2fa7edbc228"
+  version = "0.1.1"
 
 [[projects]]
-  digest = "1:528c29983014997c16c76382d87e2518581787ee2d461edb61a80320714c160d"
+  digest = "1:6895fbe5a10c5aebd1965cac6f6905dcdb21bee01e08912d3ba6a805c2485f6a"
   name = "github.com/jinzhu/gorm"
   packages = [
     ".",
@@ -29,7 +29,7 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
-  digest = "1:5b4bfb4756351d0a9078a771a85e892c34ce33840b56eb7a317cb508adddab7c"
+  digest = "1:b18ffc558326ebaed3b4a175617f1e12ed4e3f53d6ebfe5ba372a3de16d22278"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -44,7 +44,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/davecgh/go-spew/spew",
+    "github.com/Jeffail/tunny",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
   ]

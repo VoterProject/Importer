@@ -3,10 +3,12 @@ package pa_parser
 import (
 	"bufio"
 	"fmt"
+	"github.com/Jeffail/tunny"
 	"github.com/voterproject/importer/pkg/sql"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -41,32 +43,36 @@ func (pa *pa_parser) parseFile(path string) {
 	}
 	scanner := bufio.NewScanner(file)
 
+	var wg sync.WaitGroup
+	pool := tunny.NewFunc(8, func(i interface{}) interface{} {
+		return pa.parseLine(i.(string), &wg)
+	})
 	for scanner.Scan() {
-		pa.parseLine(scanner.Text())
-
-		/*
-			recordQueue := make([]*Record, 0)
-			record := pa.parseLine(scanner.Text())
-			if record != nil {
-				recordQueue = append(recordQueue, record)
-				if len(recordQueue) == 100 {
-					fmt.Println("Start")
-					tx := pa.db.DB.Begin()
-					for _, v := range recordQueue {
-						tx.Create(v)
-					}
-					tx.Commit()
-					recordQueue = make([]*Record, 0)
-					fmt.Println("Commit 100")
-					return
-				}
-			}
-		*/
+		wg.Add(1)
+		pool.Process(scanner.Text())
+		//recordQueue := make([]*Record, 0)
+		//record := pa.parseLine(scanner.Text())
+		//if record != nil {
+		//	recordQueue = append(recordQueue, record)
+		//	if len(recordQueue) == 100 {
+		//		fmt.Println("Start")
+		//		tx := pa.db.DB.Begin()
+		//		for _, v := range recordQueue {
+		//			tx.Save(v)
+		//		}
+		//		tx.Commit()
+		//		recordQueue = make([]*Record, 0)
+		//		fmt.Println("Commit 100")
+		//		return
+		//	}
+		//}
 	}
-
+	fmt.Println("Done breaking apart")
+	wg.Wait()
+	fmt.Println("Done import")
 }
 
-func (pa *pa_parser) parseLine(line string) *Record {
+func (pa *pa_parser) parseLine(line string, wg *sync.WaitGroup) *Record {
 	fields := strings.Split(line, "\t")
 
 	// Districts are fields 30-70
@@ -131,7 +137,7 @@ func (pa *pa_parser) parseLine(line string) *Record {
 		MailCountry:       parseString(fields[152]),
 	}
 
-	pa.db.DB.Create(&record)
+	pa.db.DB.Save(&record)
 
 	tx := pa.db.DB.Begin()
 	for _, v := range elections {
@@ -139,17 +145,17 @@ func (pa *pa_parser) parseLine(line string) *Record {
 			continue
 		}
 		v.RecordID = record.ID
-		tx.Create(&v)
+		tx.Save(&v)
 	}
 	for _, v := range districts {
 		if v.District == nil {
 			continue
 		}
 		v.RecordID = record.ID
-		tx.Create(&v)
+		tx.Save(&v)
 	}
 	tx.Commit()
-
+	wg.Done()
 	return &record
 }
 
