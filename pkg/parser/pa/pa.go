@@ -42,6 +42,21 @@ func parseFile(path string) {
 func parseLine(line string) *Record {
 	fields := strings.Split(line, "\t")
 
+	// Districts are fields 30-70
+	districts := map[int]string{}
+	for i := 30; i <= 70; i++ {
+		districts[i-30] = *parseString(fields[i])
+	}
+
+	// Elections are fields 71-150, grouped in pairs
+	elections := map[int]Election{}
+	for i := 70; i <= 149; i = i + 2 {
+		election := Election{
+			parseString(fields[i]),
+			parseString(fields[i+1]),
+		}
+		elections[i-70] = election
+	}
 	record := Record{
 		parseString(fields[0]),
 		parseString(fields[1]),
@@ -73,6 +88,8 @@ func parseLine(line string) *Record {
 		parseString(fields[27]),
 		parseTime(fields[28]),
 		parseString(fields[29]),
+		districts,
+		elections,
 		parseString(fields[150]),
 		parseString(fields[151]),
 		parseString(fields[152]),
