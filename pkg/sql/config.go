@@ -15,7 +15,7 @@ func ConfigFromFile(filename string) DBConfig {
 		panic(err)
 	}
 	config := DBConfig{}
-	jsonErr := json.Unmarshal(data, config)
+	jsonErr := json.Unmarshal(data, &config)
 	if jsonErr != nil {
 		panic(jsonErr)
 	}

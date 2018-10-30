@@ -4,13 +4,21 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/voterproject/importer/pkg/sql"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
-func ParseDirectory(path string) {
+type pa_parser struct {
+	db *sql.VoterDB
+}
+
+func ParseDirectory(path string, db *sql.VoterDB) {
+
+	pa := pa_parser{db}
+
 	fmt.Println(path)
 
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -20,12 +28,12 @@ func ParseDirectory(path string) {
 		if !strings.Contains(path, "MONTGOMERY") {
 			return nil
 		}
-		parseFile(path)
+		pa.parseFile(path)
 		return nil
 	})
 }
 
-func parseFile(path string) {
+func (pa *pa_parser) parseFile(path string) {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println(err)
@@ -33,25 +41,28 @@ func parseFile(path string) {
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		parseLine(scanner.Text())
+		pa.parseLine(scanner.Text())
 		//return
 	}
 
 }
 
-func parseLine(line string) *Record {
+func (pa *pa_parser) parseLine(line string) *Record {
 	fields := strings.Split(line, "\t")
 
 	// Districts are fields 30-70
-	districts := map[int]*string{}
+	districts := make([]District, 40)
 	for i := 30; i < 70; i++ {
-		districts[i-30] = parseString(fields[i])
+		j := i - 30
+		districts[j] = District{j + 1, parseString(fields[i])}
 	}
 
 	// Elections are fields 71-150, grouped in pairs
-	elections := map[int]Election{}
+	elections := make([]Election, 40)
 	for i := 70; i < 150; i = i + 2 {
+		j := (i - 70) / 2
 		election := Election{
+			j + 1,
 			parseString(fields[i]),
 			parseString(fields[i+1]),
 		}
@@ -95,8 +106,10 @@ func parseLine(line string) *Record {
 		parseString(fields[152]),
 	}
 
-	if record.FirstName != nil && *(record.FirstName) == "AMIR" {
+	if record.FirstName != nil && record.LastName != nil && *(record.FirstName) == "AMIR" && *(record.LastName) == "OMIDI" {
 		spew.Println(record)
+		pa.db.DB.AutoMigrate(&record)
+		pa.db.DB.Create(&record)
 	}
 	return &record
 }

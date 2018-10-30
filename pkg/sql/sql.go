@@ -1,20 +1,20 @@
 package sql
 
 import (
-	"database/sql"
-	_ "github.com/lib/pq"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"log"
 )
 
-type voterdb struct {
-	DB *sql.DB
+type VoterDB struct {
+	DB *gorm.DB
 }
 
-func NewSQL(connectionString string) *voterdb {
-	db, err := sql.Open("postgres", connectionString)
+func NewSQL(connectionString string) *VoterDB {
+	db, err := gorm.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return &voterdb{DB: db}
+	return &VoterDB{DB: db}
 }

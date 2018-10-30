@@ -33,14 +33,20 @@ type Record struct {
 	PrecinctSplitID   *string
 	DateLastChanged   *time.Time
 	CustomData1       *string
-	Districts         map[int]*string
-	Elections         map[int]Election
+	Districts         []District `gorm:"one2many:districts;foreignkey:ID"`
+	Elections         []Election `gorm:"one2many:elections;foreignkey:ID"`
 	HomePhone         *string
 	County            *string
 	MailCountry       *string
 }
 
 type Election struct {
+	Number     int
 	VoteMethod *string
 	Party      *string
+}
+
+type District struct {
+	Number   int
+	District *string
 }
