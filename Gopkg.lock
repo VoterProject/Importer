@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:7248f832d2ec4b41627eb8bd55645bc42048a392ddeb647fd0abb2b69f1ded1a"
+  name = "github.com/Jeffail/tunny"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "59cfa8fcb19f5acba8db07a0dd3cb2fa7edbc228"
+  version = "0.1.1"
+
+[[projects]]
   branch = "master"
   digest = "1:d64295b5ec8d005079c11a1b647a1792ca8260eafbbbb10ef8092e5ca85038be"
   name = "github.com/gocarina/gocsv"
@@ -44,6 +52,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Jeffail/tunny",
     "github.com/gocarina/gocsv",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
