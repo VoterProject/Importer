@@ -33,20 +33,22 @@ type Record struct {
 	PrecinctSplitID   *string
 	DateLastChanged   *time.Time
 	CustomData1       *string
-	Districts         []District `gorm:"association_foreignkey:ID"`
-	Elections         []Election `gorm:"association_foreignkey:ID"`
+	Districts         []District `gorm:"foreignkey:DistrictID;association_foreignkey:ID"`
+	Elections         []Election `gorm:"foreignkey:ElectionID;association_foreignkey:ID"`
 	HomePhone         *string
 	County            *string
 	MailCountry       *string
 }
 
 type Election struct {
+	ElectionID int `gorm:"AUTO_INCREMENT"`
 	Number     int
 	VoteMethod *string
 	Party      *string
 }
 
 type District struct {
-	Number   int
-	District *string
+	DistrictID int `gorm:"AUTO_INCREMENT"`
+	Number     int
+	District   *string
 }

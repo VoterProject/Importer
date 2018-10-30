@@ -15,6 +15,7 @@ func NewSQL(connectionString string) *VoterDB {
 	if err != nil {
 		log.Fatal(err)
 	}
+	db.LogMode(true)
 
 	return &VoterDB{DB: db}
 }

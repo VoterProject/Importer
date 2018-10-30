@@ -54,7 +54,9 @@ func (pa *pa_parser) parseLine(line string) *Record {
 	districts := make([]District, 40)
 	for i := 30; i < 70; i++ {
 		j := i - 30
-		districts[j] = District{j + 1, parseString(fields[i])}
+		districts[j] = District{
+			Number:   j + 1,
+			District: parseString(fields[i])}
 	}
 
 	// Elections are fields 71-150, grouped in pairs
@@ -62,9 +64,9 @@ func (pa *pa_parser) parseLine(line string) *Record {
 	for i := 70; i < 150; i = i + 2 {
 		j := (i - 70) / 2
 		election := Election{
-			j + 1,
-			parseString(fields[i]),
-			parseString(fields[i+1]),
+			Number:     j + 1,
+			VoteMethod: parseString(fields[i]),
+			Party:      parseString(fields[i+1]),
 		}
 		elections[(i-70)/2] = election
 	}
