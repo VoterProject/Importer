@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,7 +18,6 @@ type pa_parser struct {
 }
 
 func ParseDirectory(path string, db *sql.VoterDB) {
-
 	pa := pa_parser{db: db}
 
 	fmt.Println(path)
@@ -26,46 +26,85 @@ func ParseDirectory(path string, db *sql.VoterDB) {
 		if !strings.Contains(path, "FVE") {
 			return nil
 		}
-		if !strings.Contains(path, "MONTGOMERY") {
-			return nil
-		}
 		pa.parseFile(path)
 		return nil
 	})
 }
 
 func (pa *pa_parser) parseFile(path string) {
+	fmt.Printf("Parsing: %s\n", path)
+
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println(err)
 	}
 	scanner := bufio.NewScanner(file)
 
+	var wg sync.WaitGroup
+	var store sync.Map
+
+	i := 0
+	for scanner.Scan() {
+		wg.Add(1)
+		go pa.parseLine(scanner.Text(), i, &wg, &store)
+		i++
+	}
+
+	wg.Wait()
+
+	// Close file, don't wait too long.
+	file.Close()
+
+	fmt.Println("Done parsing")
+
 	var records []Record
 	var elections []Election
 	var districts []District
-	for scanner.Scan() {
-		x := pa.parseLine(scanner.Text())
-		records = append(records, *x.Record)
-		elections = append(elections, x.Election...)
-		districts = append(districts, x.District...)
-		//return
+
+	store.Range(func(key, value interface{}) bool {
+		result := value.(*Results)
+		records = append(records, *result.Record)
+		elections = append(elections, result.Election...)
+		districts = append(districts, result.District...)
+		store.Delete(key)
+		return true
+	})
+	fmt.Println("Done putting them into a list")
+
+	if !pa.Tables {
+		pa.db.DB.CreateTable(&(records[0]))
+		pa.db.DB.CreateTable(&(elections[0]))
+		pa.db.DB.CreateTable(&(districts[0]))
+
+		pa.Tables = true
 	}
 
-	pa.db.DB.CreateTable(&(records[0]))
-	pa.db.DB.CreateTable(&(elections[0]))
-	pa.db.DB.CreateTable(&(districts[0]))
+	f1, err := os.OpenFile("./pa_records.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
+	f2, err := os.OpenFile("./pa_elections.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
+	f3, err := os.OpenFile("./pa_districts.csv", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
 
-	f1, err := os.Create("./pa_records.csv")
-	f2, err := os.Create("./pa_elections.csv")
-	f3, err := os.Create("./pa_districts.csv")
-	err = gocsv.MarshalFile(&records, f1)
-	err = gocsv.MarshalFile(&elections, f2)
-	err = gocsv.MarshalFile(&districts, f3)
+	defer f1.Close()
+	defer f2.Close()
+	defer f3.Close()
 
+	if !pa.Tables {
+		err = gocsv.MarshalFile(&(records), f1)
+		err = gocsv.MarshalFile(&(elections), f2)
+		err = gocsv.MarshalFile(&(districts), f3)
+	} else {
+		err = gocsv.MarshalWithoutHeaders(&(records), f1)
+		err = gocsv.MarshalWithoutHeaders(&(elections), f2)
+		err = gocsv.MarshalWithoutHeaders(&(districts), f3)
+	}
+
+	records = nil
+	elections = nil
+	districts = nil
+
+	fmt.Println("Done putting them into a CSV")
 }
 
-func (pa *pa_parser) parseLine(line string) *Results {
+func (pa *pa_parser) parseLine(line string, i int, wg *sync.WaitGroup, store *sync.Map) {
 	fields := strings.Split(line, "\t")
 	ID := parseString(fields[0])
 
@@ -74,26 +113,39 @@ func (pa *pa_parser) parseLine(line string) *Results {
 	}
 
 	//Districts are fields 30-70
-	districts := make([]District, 40)
+	var districts []District
 	for i := 30; i < 70; i++ {
 		j := i - 30
-		districts[j] = District{
+
+		district := parseString(fields[i])
+		if district == nil {
+			continue
+		}
+		d := District{
 			RecordID: *ID,
 			Number:   j + 1,
-			District: parseString(fields[i])}
+			District: district,
+		}
+		districts = append(districts, d)
 	}
 
 	// Elections are fields 71-150, grouped in pairs
-	elections := make([]Election, 40)
+	var elections []Election
 	for i := 70; i < 150; i = i + 2 {
 		j := (i - 70) / 2
+		voteMethod := parseString(fields[i])
+		party := parseString(fields[i+1])
+
+		if voteMethod == nil && party == nil {
+			continue
+		}
 		election := Election{
 			RecordID:   *ID,
 			Number:     j + 1,
-			VoteMethod: parseString(fields[i]),
-			Party:      parseString(fields[i+1]),
+			VoteMethod: voteMethod,
+			Party:      party,
 		}
-		elections[(i-70)/2] = election
+		elections = append(elections, election)
 	}
 	record := Record{
 		*ID,
@@ -130,11 +182,13 @@ func (pa *pa_parser) parseLine(line string) *Results {
 		parseString(fields[151]),
 		parseString(fields[152]),
 	}
-	return &Results{
-		&record,
-		elections,
-		districts,
-	}
+
+	//pa.m.Lock()
+	store.Store(i, &Results{&record, elections, districts})
+
+	//pa.m.Unlock()
+
+	wg.Done()
 }
 
 func (pa *pa_parser) ToCSV(records []Record) {
