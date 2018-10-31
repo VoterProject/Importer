@@ -1,4 +1,4 @@
-package sql
+package config
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 
 type DBConfig struct {
 	DSN string `json:"db"`
+	PA  string `json:"pa"`
+	WA  string `json:"wa"`
 }
 
 func ConfigFromFile(filename string) DBConfig {

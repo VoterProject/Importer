@@ -1,3 +1,5 @@
 {
-  "db": "postgres://voter:password@localhost/voter"
+  "db": "postgres://voter:password@localhost/voter",
+  "pa": "/path",
+  "wa": "/path"
 }
